@@ -1,0 +1,113 @@
+const authService = require('./auth.service');
+const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../../utils/jwt.utils');
+const bcrypt = require('bcrypt');
+
+const register = async (req, res, next) => {
+    try {
+        const { name, email, password, role } = req.body;
+
+        const existingUser = await authService.findUserByEmail(email);
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: 'User already exists' });
+        }
+
+        const user = await authService.createUser(name, email, password, role);
+
+        res.status(201).json({
+            success: true,
+            message: 'User registered successfully',
+            data: user
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const login = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await authService.findUserByEmail(email);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        await authService.updateRefreshToken(user.id, refreshToken);
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                accessToken
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const refresh = async (req, res, next) => {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+        if (!refreshToken) {
+            return res.status(401).json({ success: false, message: 'Refresh token missing' });
+        }
+
+        const decoded = verifyRefreshToken(refreshToken);
+        const user = await authService.findUserById(decoded.id);
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found' });
+        }
+
+        const newAccessToken = generateAccessToken(user);
+
+        res.status(200).json({
+            success: true,
+            accessToken: newAccessToken
+        });
+    } catch (error) {
+        res.status(403).json({ success: false, message: 'Invalid refresh token' });
+    }
+};
+
+const logout = async (req, res, next) => {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+        if (refreshToken) {
+            const decoded = verifyRefreshToken(refreshToken);
+            await authService.clearRefreshToken(decoded.id);
+        }
+
+        res.clearCookie('refreshToken');
+        res.status(200).json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    register,
+    login,
+    refresh,
+    logout
+};
