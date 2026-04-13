@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/api';
+import { useSocket } from '../../context/SocketContext';
 import { MapPin, Star, Clock, ShieldCheck, Car, ArrowLeft, CheckCircle2, Info, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../../components/ui/Button';
@@ -14,20 +15,35 @@ const BusinessDetails = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [bookingLoading, setBookingLoading] = useState(false);
+    const socket = useSocket();
     
     // Booking Configuration States
-    const [duration, setDuration] = useState(1);
+    const [duration, setDuration] = useState(60); // Duration in minutes
     const [arrivalTime, setArrivalTime] = useState('');
+
+    // Extracted fetching slots to reuse in sockets
+    const fetchSlots = async () => {
+        try {
+            const slotsRes = await api.get(`/slots/${id}`);
+            setSlots(slotsRes.data.data);
+            
+            // Re-validate selected slot (clear if it became unavailable)
+            setSelectedSlot(prev => {
+                const refreshed = slotsRes.data.data.find(s => s.id === prev?.id);
+                return refreshed?.is_available ? refreshed : null;
+            });
+        } catch (error) {
+            console.error('Error fetching slots', error);
+        }
+    };
 
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                const [bizRes, slotsRes] = await Promise.all([
-                    api.get(`/business/${id}`),
-                    api.get(`/slots/${id}`)
-                ]);
+                const bizRes = await api.get(`/business/${id}`);
                 setBusiness(bizRes.data.data);
-                setSlots(slotsRes.data.data);
+                
+                await fetchSlots();
                 
                 // Pre-fill Arrival Time to Now (local ISO format stripped to minutes)
                 const now = new Date();
@@ -44,6 +60,24 @@ const BusinessDetails = () => {
         fetchDetails();
     }, [id]);
 
+    useEffect(() => {
+        if (!socket) return;
+        
+        // Join the business room
+        socket.emit('joinBusinessRoom', id);
+        
+        socket.on('slotsUpdated', (data) => {
+            if (data.businessId.toString() === id.toString()) {
+                fetchSlots();
+            }
+        });
+        
+        return () => {
+            socket.emit('leaveBusinessRoom', id);
+            socket.off('slotsUpdated');
+        };
+    }, [socket, id]);
+
     const handleBooking = async () => {
         if (!selectedSlot || !arrivalTime) return alert("Please ensure an Arrival Time and Node are selected.");
         setBookingLoading(true);
@@ -51,17 +85,19 @@ const BusinessDetails = () => {
             const startStr = new Date(arrivalTime);
             const startTime = startStr.toISOString();
             
-            // Generate ending boundary
+            // Generate ending boundary (duration is in minutes)
             const endStr = new Date(startStr);
-            endStr.setHours(endStr.getHours() + parseInt(duration));
+            endStr.setMinutes(endStr.getMinutes() + parseInt(duration));
             const endTime = endStr.toISOString();
             
+            const totalPrice = (business.price_per_hour / 60) * parseInt(duration);
+
             await api.post('/bookings', {
                 businessId: business.id,
                 slotId: selectedSlot.id,
                 startTime,
                 endTime,
-                totalPrice: business.price_per_hour * parseInt(duration)
+                totalPrice: parseFloat(totalPrice.toFixed(2))
             });
             navigate('/profile'); // Better UX to go straight to their history after booking!
         } catch (error) {
@@ -210,11 +246,16 @@ const BusinessDetails = () => {
                                             onChange={(e) => setDuration(parseInt(e.target.value))}
                                             className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-brand-yellow transition-colors appearance-none"
                                         >
-                                            <option value={1}>1 Hour</option>
-                                            <option value={2}>2 Hours</option>
-                                            <option value={4}>4 Hours</option>
-                                            <option value={8}>8 Hours</option>
-                                            <option value={24}>24 Hours (Full Day)</option>
+                                            <option value={5}>5 Minutes</option>
+                                            <option value={10}>10 Minutes</option>
+                                            <option value={15}>15 Minutes</option>
+                                            <option value={30}>30 Minutes</option>
+                                            <option value={45}>45 Minutes</option>
+                                            <option value={60}>1 Hour</option>
+                                            <option value={120}>2 Hours</option>
+                                            <option value={240}>4 Hours</option>
+                                            <option value={480}>8 Hours</option>
+                                            <option value={1440}>24 Hours (Full Day)</option>
                                         </select>
                                      </div>
                                 </div>
@@ -231,7 +272,7 @@ const BusinessDetails = () => {
                                 <div className="flex justify-between items-center pt-4">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">System Total</span>
                                     <span className="text-4xl font-black font-outfit text-white">
-                                        ${selectedSlot ? (business.price_per_hour * duration).toFixed(2) : '0.00'}
+                                        ${selectedSlot ? ((business.price_per_hour / 60) * duration).toFixed(2) : '0.00'}
                                     </span>
                                 </div>
                             </div>

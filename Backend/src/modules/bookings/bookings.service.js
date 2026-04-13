@@ -1,4 +1,24 @@
 const db = require('../../config/db');
+const { redisClient, isRedisConnected } = require('../../config/redis');
+const { getIO } = require('../../config/socket');
+
+const emitSlotsUpdated = (businessId) => {
+    try {
+        const io = getIO();
+        io.to(`business_${businessId}`).emit('slotsUpdated', { businessId });
+    } catch (err) {
+        console.error('Failed to emit slotsUpdated event:', err.message);
+    }
+};
+
+const invalidateSlotsCache = async (businessId) => {
+    if (!isRedisConnected()) return;
+    try {
+        await redisClient.del(`slots:${businessId}`);
+    } catch (err) {
+        console.error('Failed to invalidate Redis cache:', err.message);
+    }
+};
 
 const createBookingTransaction = async (userId, businessId, slotId, startTime, endTime, totalPrice) => {
     const client = await db.pool.connect();
@@ -34,6 +54,11 @@ const createBookingTransaction = async (userId, businessId, slotId, startTime, e
         await client.query(updateSlotQuery, [slotId]);
 
         await client.query('COMMIT');
+
+        // Socket and Cache updates
+        await invalidateSlotsCache(businessId);
+        emitSlotsUpdated(businessId);
+
         return booking;
     } catch (error) {
         await client.query('ROLLBACK');
@@ -77,6 +102,11 @@ const cancelBookingTransaction = async (bookingId, userId) => {
         await client.query(updateSlotQuery, [booking.slot_id]);
 
         await client.query('COMMIT');
+        
+        // Socket and Cache updates
+        await invalidateSlotsCache(booking.business_id);
+        emitSlotsUpdated(booking.business_id);
+
         return booking;
     } catch (error) {
         await client.query('ROLLBACK');

@@ -16,6 +16,7 @@ import {
     X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
@@ -29,6 +30,7 @@ const BusinessDashboard = () => {
     const [business, setBusiness] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
+    const socket = useSocket();
 
     // Modal States
     const [showBusinessSetup, setShowBusinessSetup] = useState(false);
@@ -38,6 +40,29 @@ const BusinessDashboard = () => {
     const [bizForm, setBizForm] = useState({ name: '', address: '', totalSlots: 10, price: 5 });
     const [slotForm, setSlotForm] = useState({ prefix: 'A', count: 5 });
     const [actionLoading, setActionLoading] = useState(false);
+
+    const fetchSlotsAndBookings = async (bizId) => {
+        try {
+            const [slotsRes, bookingsRes] = await Promise.all([
+                api.get(`/slots/${bizId}`), 
+                api.get(`/bookings/business/${bizId}`)
+            ]);
+            
+            const fetchedSlots = slotsRes.data.data || [];
+            const fetchedBookings = bookingsRes.data.data || [];
+            
+            setSlots(fetchedSlots);
+            setBookings(fetchedBookings);
+            
+            setStats({
+                totalSlots: fetchedSlots.length,
+                activeBookings: fetchedBookings.filter(b => b.status === 'booked' || b.status === 'active').length,
+                totalRevenue: fetchedBookings.reduce((acc, curr) => acc + (parseFloat(curr.total_price) || 0), 0)
+            });
+        } catch (error) {
+            console.error('Error fetching slots and bookings', error);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -56,22 +81,8 @@ const BusinessDashboard = () => {
                 setBusiness(biz);
                 
                 // 2. Fetch Slots & Bookings related to this specific business ID
-                const [slotsRes, bookingsRes] = await Promise.all([
-                    api.get(`/slots/${biz.id}`), 
-                    api.get(`/bookings/business/${biz.id}`)
-                ]);
+                await fetchSlotsAndBookings(biz.id);
                 
-                const fetchedSlots = slotsRes.data.data || [];
-                const fetchedBookings = bookingsRes.data.data || [];
-                
-                setSlots(fetchedSlots);
-                setBookings(fetchedBookings);
-                
-                setStats({
-                    totalSlots: fetchedSlots.length,
-                    activeBookings: fetchedBookings.filter(b => b.status === 'booked' || b.status === 'active').length,
-                    totalRevenue: fetchedBookings.reduce((acc, curr) => acc + (parseFloat(curr.total_price) || 0), 0)
-                });
             } catch (error) {
                 console.error('Error fetching dashboard data', error);
             } finally {
@@ -80,6 +91,23 @@ const BusinessDashboard = () => {
         };
         fetchDashboardData();
     }, []);
+
+    useEffect(() => {
+        if (!socket || !business) return;
+        
+        socket.emit('joinBusinessRoom', business.id);
+        
+        socket.on('slotsUpdated', (data) => {
+            if (data.businessId.toString() === business.id.toString()) {
+                fetchSlotsAndBookings(business.id);
+            }
+        });
+        
+        return () => {
+            socket.emit('leaveBusinessRoom', business.id);
+            socket.off('slotsUpdated');
+        };
+    }, [socket, business]);
 
     const handleRegisterBusiness = async (e) => {
         e.preventDefault();
@@ -398,13 +426,17 @@ const BusinessDashboard = () => {
                                                     if (!active) return <span className="text-xs font-bold text-slate-500 dark:text-slate-400">---</span>;
                                                     const sTime = new Date(active.start_time);
                                                     const eTime = new Date(active.end_time);
-                                                    const duration = Math.round((eTime - sTime) / 3600000);
+                                                    const durationMs = eTime - sTime;
+                                                    const durationMins = Math.round(durationMs / 60000);
+                                                    const durationLabel = durationMins >= 60 
+                                                        ? `${(durationMins / 60).toFixed(durationMins % 60 === 0 ? 0 : 1)} Hr${durationMins >= 120 ? 's' : ''}` 
+                                                        : `${durationMins} Min${durationMins !== 1 ? 's' : ''}`;
                                                     return (
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-bold text-slate-500 dark:text-slate-200">
                                                                 {sTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {eTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                             </span>
-                                                            <span className="text-[9px] font-black uppercase text-brand-yellow mt-1">Booked for {duration} Hrs</span>
+                                                            <span className="text-[9px] font-black uppercase text-brand-yellow mt-1">Booked for {durationLabel}</span>
                                                         </div>
                                                     )
                                                 })()}

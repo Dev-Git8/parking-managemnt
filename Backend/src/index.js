@@ -5,9 +5,23 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const { errorMiddleware } = require('./middlewares/error.middleware');
+const http = require('http');
+const { initializeSocket } = require('./config/socket');
+const { connectRedis } = require('./config/redis');
+const { startBookingScheduler } = require('./services/bookingScheduler');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize WebSockets
+initializeSocket(server);
+
+// Connect to Redis
+connectRedis();
+
+// Start automatic booking expiration scheduler
+startBookingScheduler();
 
 // Middleware
 app.use(cors({
@@ -39,6 +53,6 @@ app.use('/api/admin', adminRoutes);
 // Error Handling Middleware
 app.use(errorMiddleware);
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

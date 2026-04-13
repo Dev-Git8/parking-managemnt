@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home/Home';
 import Login from './pages/Login/Login';
@@ -73,9 +74,11 @@ function App() {
     return (
         <ThemeProvider>
             <AuthProvider>
-                <Router>
-                    <AppContent />
-                </Router>
+                <SocketProvider>
+                    <Router>
+                        <AppContent />
+                    </Router>
+                </SocketProvider>
             </AuthProvider>
         </ThemeProvider>
     );
