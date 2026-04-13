@@ -1,71 +1,73 @@
-# Parking Management System
+# Park-Ease: Modern Parking Management System
 
-A full-stack web application for managing parking bookings, built with React frontend and Node.js/Express backend.
+Park-Ease is a high-performance, secure, and real-time full-stack web application designed for managing parking bookings. Built with a focus on security and user experience, it leverage modern web technologies to provide instant updates and robust authentication.
 
-## Features
+## ✨ Key Features
 
-- User authentication and authorization
-- Business registration and management
-- Parking slot management
-- Booking system for parking slots
-- Admin dashboard for oversight
-- Responsive UI with Tailwind CSS
+- **🛡️ Production-Grade Security**: 
+    - **In-Memory Access Tokens**: Mitigates XSS by never storing access tokens in localStorage or persistent cookies.
+    - **HttpOnly Refresh Tokens**: Secure session management using server-side cookies.
+    - **Axios Concurrency Queue**: Robust interceptors that handle simultaneous token refreshes without race conditions.
+- **⚡ Real-Time Live Updates**: 
+    - Powered by **Socket.io** for instant synchronization of parking slot availability across all connected clients.
+- **🕒 Automated Booking Lifecycle**: 
+    - Background scheduler releases expired parking slots automatically.
+    - Minute-based flexible durations for bookings.
+- **📊 Business & Admin Dashboards**: 
+    - Comprehensive interfaces for parking providers and system administrators.
+- **📱 Responsive Design**: 
+    - Fully optimized for all devices using **Tailwind CSS**.
 
-## Tech Stack
+## 🚀 Tech Stack
 
-- **Frontend**: React, Vite, Tailwind CSS
-- **Backend**: Node.js, Express.js, SQLite
-- **Authentication**: JWT
-- **Deployment**: Ready for deployment on platforms like Vercel/Netlify (frontend) and Heroku/Railway (backend)
+- **Frontend**: React (Vite), Tailwind CSS, Axios, Socket.io-client
+- **Backend**: Node.js, Express.js, SQLite (Prisma ORM)
+- **Real-time & Performance**: Socket.io, Redis (for caching and synchronization)
+- **Task Scheduling**: Node-cron / Background Workers
 
-## Project Structure
+## 📂 Project Structure
 
 ```
-parking-managemnt/
+Park-Ease/
 ├── Backend/                 # Node.js/Express backend
 │   ├── src/
-│   │   ├── config/          # Database configuration
-│   │   ├── middlewares/     # Auth and error handling
-│   │   ├── modules/         # Feature modules (auth, bookings, etc.)
-│   │   └── utils/           # JWT utilities
-│   ├── package.json
-│   ├── schema.sql           # Database schema
-│   └── .env.example         # Environment variables template
+│   │   ├── config/          # Database, Redis & Socket.io config
+│   │   ├── middlewares/     # Auth (Cookie-based) & Error handling
+│   │   ├── modules/         # Feature modules (Auth, Bookings, Slots, Business)
+│   │   ├── services/        # Business logic & Background tasks
+│   │   └── utils/           # JWT & Security utilities
+│   └── .env.example         # Environment template
 ├── frontend/                # React frontend
 │   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # Application pages
-│   │   ├── context/         # React contexts
-│   │   └── api/             # API client
-│   ├── package.json
-│   └── vite.config.js
-├── package.json             # Root package.json (if needed)
-└── README.md
+│   │   ├── api/             # Axios instance with memory-store and interceptors
+│   │   ├── context/         # Auth & Socket Contexts
+│   │   ├── components/      # UI Components
+│   │   └── pages/           # View layers
+└── package.json
 ```
 
-## Setup Instructions
+## 🛠️ Setup Instructions
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
-- SQLite (or any SQL database compatible with the schema)
+- **Node.js**: v18 or higher
+- **Redis**: Required for real-time features and scheduling
+- **npm** or **yarn**
 
 ### Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Dev-Git8/parking-managemnt.git
-   cd parking-managemnt
+   git clone https://github.com/Dev-Git8/Park-Ease.git
+   cd Park-Ease
    ```
 
 2. **Backend Setup:**
    ```bash
    cd Backend
    npm install
-   # Copy environment variables
    cp .env.example .env
-   # Edit .env with your database URL and JWT secret
+   # Ensure PORT, REDIS_URL, and JWT_SECRET are set in .env
    ```
 
 3. **Frontend Setup:**
@@ -74,9 +76,8 @@ parking-managemnt/
    npm install
    ```
 
-4. **Database Setup:**
-   - Create a SQLite database
-   - Run the SQL commands from `Backend/schema.sql` to set up tables
+4. **Run Redis:**
+   Ensure your Redis server is running locally (default port 6379).
 
 ### Running the Application
 
@@ -85,40 +86,28 @@ parking-managemnt/
    cd Backend
    npm run dev
    ```
-   The backend will run on http://localhost:3000 (or configured port)
 
 2. **Start the Frontend:**
    ```bash
    cd frontend
    npm run dev
    ```
-   The frontend will run on http://localhost:5173
 
-3. **Access the Application:**
-   Open http://localhost:5173 in your browser
+## 🔐 Authentication Flow
 
-## API Endpoints
+Park-Ease uses a "Best-of-Both-Worlds" auth strategy:
+1. **Access Token**: Stored in JavaScript memory. Lost on page refresh but recovered via the refresh token.
+2. **Refresh Token**: Stored in a `Secure`, `HttpOnly`, `SameSite=Strict` cookie.
+3. **Recovery**: On app load, the frontend calls `/auth/refresh`. If the cookie is valid, a new access token is issued and the session is restored seamlessly.
 
-The backend provides RESTful APIs for:
-- Authentication (`/auth`)
-- User management (`/users`)
-- Business management (`/business`)
-- Slot management (`/slots`)
-- Bookings (`/bookings`)
-- Admin functions (`/admin`)
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contact
-
-For questions or support, please open an issue on GitHub.
+This project is licensed under the MIT License.
