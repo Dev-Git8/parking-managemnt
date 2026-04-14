@@ -12,16 +12,27 @@
 ### Frontend
 - **Framework**: React 18 (Vite)
 - **State & Context**: React Context API
-- **Styling**: Tailwind CSS
-- **Communication**: Axios (with custom concurrency-aware interceptors), Socket.io-client
+- **Styling**: Vanilla CSS (Premium Micro-animations)
+- **Communication**: Axios, Socket.io-client
 
 ### Backend
 - **Runtime**: Node.js (Express.js)
-- **Database**: PostgreSQL / SQLite (via Prisma ORM)
+- **Database**: PostgreSQL (Dockerized)
 - **Real-time**: Socket.io
-- **Caching**: Redis
+- **Caching**: Redis (Dockerized)
 - **Authentication**: JWT (Stateless with HttpOnly Cookies)
 - **Scheduling**: Node-cron based Background Workers
+- **Cloud Media**: Cloudinary (Image Uploads)
+
+---
+
+## 🏗️ Infrastructure: The Docker Advantage
+
+Park-Ease uses **Docker Containerization** to provide a consistent development environment. By using `docker-compose`, we ensure that the entire infrastructure (Database + Cache) is portable and ready for production.
+
+- **Orchestration**: Managed via `docker-compose.yml`.
+- **Persistence**: Data is persisted on the host machine using Docker Volumes.
+- **Portability**: New developers can be up and running with a single command without installing Postgres or Redis manually.
 
 ---
 
@@ -30,9 +41,9 @@
 To prevent **XSS (Cross-Site Scripting)** and **CSRF (Cross-Site Request Forgery)**, Park-Ease implements a hybrid authentication strategy:
 
 1.  **Strictly In-Memory Access Tokens**: The `accessToken` is stored only in a JavaScript variable. It is never written to `localStorage` or `sessionStorage`.
-2.  **HttpOnly Refresh Cookies**: The `refreshToken` is stored in a `Secure`, `HttpOnly`, `SameSite=Strict` cookie. It is inaccessible to client-side scripts.
-3.  **Automatic Session Restoration**: On application load, the system automatically attempts a `/refresh` call to restore the user session seamlessly.
-4.  **Concurrency-Aware Refresh Queue**: Custom Axios interceptors ensure that if multiple protected requests expire at once, only ONE refresh call is sent to the server, while others wait in a queue to be retried with the new token.
+2.  **HttpOnly Refresh Cookies**: The `refreshToken` is stored in a `Secure`, `HttpOnly`, `SameSite=Strict` cookie.
+3.  **Automatic Session Restoration**: On application load, the system automatically attempts a `/refresh` call to restore the user session.
+4.  **Concurrency-Aware Refresh Queue**: Custom Axios interceptors ensure that only one refresh call is sent if multiple requests expire simultaneously.
 
 ---
 
@@ -67,23 +78,6 @@ To prevent **XSS (Cross-Site Scripting)** and **CSRF (Cross-Site Request Forgery
 | :--- | :--- | :--- | :--- |
 | `/` | GET | List all available parking slots | Public |
 | `/` | POST | Create a new parking slot | Business Owner |
-| `/:id` | GET | Get details of a specific slot | Public |
-| `/business/:id` | GET | Get all slots for a specific business | Public |
-
-### 📅 Bookings (`/api/bookings`)
-| Endpoint | Method | Description | Access |
-| :--- | :--- | :--- | :--- |
-| `/` | POST | Create a new parking booking | Customer |
-| `/customer/:id` | GET | View booking history for a customer | Customer/Admin |
-| `/business/:id` | GET | View all bookings for a parking provider | Business/Admin |
-| `/:id/cancel` | PUT | Cancel an active booking | Customer/Business |
-
-### 👑 Admin (`/api/admin`)
-| Endpoint | Method | Description | Access |
-| :--- | :--- | :--- | :--- |
-| `/users` | GET | List all platform users | Admin |
-| `/businesses` | GET | List all registered businesses | Admin |
-| `/businesses/:id/status`| PUT | Approve or Reject a parking provider | Admin |
 
 ---
 
@@ -92,17 +86,11 @@ To prevent **XSS (Cross-Site Scripting)** and **CSRF (Cross-Site Request Forgery
 ### Backend (`/Backend/.env`)
 ```env
 PORT=5000
-DATABASE_URL="file:./dev.db"
-JWT_ACCESS_SECRET=your_super_secret_access_key
-JWT_REFRESH_SECRET=your_super_secret_refresh_key
+DATABASE_URL=postgresql://postgres:root@localhost:5432/ParkingDB
+JWT_SECRET=your_jwt_secret
+REFRESH_TOKEN_SECRET=your_refresh_secret
 REDIS_URL=redis://localhost:6379
-NODE_ENV=development
-```
-
-### Frontend (`/frontend/.env`)
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+CLOUDINARY_URL=your_cloudinary_url
 ```
 
 ---
@@ -111,23 +99,31 @@ VITE_SOCKET_URL=http://localhost:5000
 
 ### Prerequisites
 - Node.js (v18+)
-- Redis Server (Running on port 6379)
-- SQLite or PostgreSQL
+- **Docker Desktop** (Essential for Infra)
 
 ### Setup
-1. **Clone & Install**
+
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/Dev-Git8/Park-Ease.git
    cd Park-Ease
    ```
-2. **Backend Configuration**
+
+2. **Start Infrastructure (Databases)**
    ```bash
    cd Backend
+   docker-compose up -d
+   ```
+
+3. **Backend Configuration**
+   ```bash
+   # Inside /Backend
    npm install
-   cp .env.example .env
+   # Create .env with the values from the Environment Variables section above
    npm run dev
    ```
-3. **Frontend Configuration**
+
+4. **Frontend Configuration**
    ```bash
    cd ../frontend
    npm install
@@ -147,3 +143,4 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 **Maintained by**: [Dev-Git8](https://github.com/Dev-Git8)
+ by**: [Dev-Git8](https://github.com/Dev-Git8)
