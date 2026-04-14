@@ -46,8 +46,10 @@ CREATE TABLE bookings (
     slot_id INTEGER REFERENCES slots(id) ON DELETE CASCADE,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    actual_end_time TIMESTAMP WITH TIME ZONE,
     total_price DECIMAL(10, 2) NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('booked', 'cancelled')) DEFAULT 'booked',
+    penalty_amount DECIMAL(10, 2) DEFAULT 0,
+    status VARCHAR(20) CHECK (status IN ('booked', 'cancelled', 'overdue', 'completed')) DEFAULT 'booked',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

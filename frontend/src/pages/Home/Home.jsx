@@ -9,20 +9,35 @@ import { Link } from 'react-router-dom';
 const Home = () => {
     const [businesses, setBusinesses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchBusinesses = async (search = '') => {
+        setLoading(true);
+        try {
+            const endpoint = search ? `/business?search=${encodeURIComponent(search)}` : '/business';
+            const { data } = await api.get(endpoint);
+            setBusinesses(data.data);
+        } catch (error) {
+            console.error('Error fetching businesses', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchBusinesses = async () => {
-            try {
-                const { data } = await api.get('/business');
-                setBusinesses(data.data);
-            } catch (error) {
-                console.error('Error fetching businesses', error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchBusinesses();
     }, []);
+
+    const handleSearch = (e) => {
+        if (e) e.preventDefault();
+        fetchBusinesses(searchTerm);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch(e);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#e5e5e5] dark:bg-[#4d4d4d] transition-colors duration-300 py-16 px-4 md:px-8">
@@ -41,15 +56,15 @@ const Home = () => {
                             <div className="w-6 h-6 bg-brand-black dark:bg-white rounded-full flex items-center justify-center mr-3">
                                 <LayoutGrid size={12} className="text-brand-yellow dark:text-brand-black" />
                             </div>
-                            <span className="text-brand-yellow font-bold text-xs uppercase tracking-widest">Start A Search</span>
+                            <span className="text-brand-yellow font-bold text-xs uppercase tracking-widest">Find Parking</span>
                         </div>
 
                         <h1 className="text-5xl lg:text-7xl font-black text-brand-black dark:text-white tracking-tighter leading-none">
-                            Find Your Perfect <br /> Space
+                            Find Your <br /> Perfect Spot
                         </h1>
 
                         <p className="text-slate-500 dark:text-slate-400 font-medium text-sm lg:text-base leading-relaxed max-w-md">
-                            Ready to secure your next parking spot? Fill out the form to start discovering available locations and how we can help you commute friction-free.
+                            Ready to reserve your next parking space? Fill out the form to browse available slots and secure your booking instantly.
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8 pt-4">
@@ -76,13 +91,16 @@ const Home = () => {
 
                     {/* Right Yellow Form Card */}
                     <div className="w-full md:w-[420px] bg-brand-yellow rounded-[2.5rem] p-8 shadow-xl flex-shrink-0">
-                        <form className="space-y-6">
+                        <form className="space-y-6" onSubmit={handleSearch}>
                             <div className="space-y-2">
                                 <label className="block text-[11px] font-black text-brand-black ml-1">Destination</label>
                                 <input 
                                     className="w-full bg-brand-yellow border-2 border-brand-black/20 focus:border-brand-black focus:bg-brand-black/5 rounded-2xl px-5 py-4 text-sm font-bold text-brand-black placeholder:text-brand-black/40 transition-colors outline-none"
                                     placeholder="City or area name"
                                     style={{ backgroundColor: 'rgba(255, 255, 255, 0.4)' }}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={handleKeyDown}
                                 />
                             </div>
 
@@ -109,7 +127,10 @@ const Home = () => {
                             </div>
 
                             <div className="pt-2">
-                                <button type="button" className="inline-flex items-center bg-white text-brand-black rounded-full pl-2 pr-6 py-2 shadow-sm hover:scale-105 active:scale-95 transition-transform">
+                                <button 
+                                    type="submit" 
+                                    className="inline-flex items-center bg-white text-brand-black rounded-full pl-2 pr-6 py-2 shadow-sm hover:scale-105 active:scale-95 transition-transform"
+                                >
                                     <div className="w-8 h-8 rounded-full bg-brand-black flex items-center justify-center mr-3">
                                         <Navigation size={12} className="text-white fill-white transform rotate-45 -ml-0.5 mt-0.5" />
                                     </div>
@@ -147,6 +168,15 @@ const Home = () => {
                                     className="group bg-white dark:bg-[#0f0f0f] p-4 rounded-[2.5rem] border border-slate-50 dark:border-[#1a1a1a] shadow-premium hover:shadow-premium-hover transition-all duration-500 hover:-translate-y-2"
                                 >
                                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden mb-6 bg-slate-100 dark:bg-[#1a1a1a]">
+                                        {biz.image_url ? (
+                                            <img 
+                                                src={biz.image_url} 
+                                                alt={biz.name}
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-900 group-hover:scale-110 transition-transform duration-700"></div>
+                                        )}
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
                                             <div className="flex items-center space-x-2">
                                                 <div className="w-8 h-8 bg-brand-yellow rounded-lg flex items-center justify-center">
@@ -171,7 +201,7 @@ const Home = () => {
                                             </div>
                                             <Link to={`/business/${biz.id}`}>
                                                 <Button size="md" className="group/btn shadow-yellow">
-                                                    Secure Spot
+                                                    Book Now
                                                     <ArrowRight size={14} className="ml-2 group-hover/btn:translate-x-1 transition-transform" />
                                                 </Button>
                                             </Link>

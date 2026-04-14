@@ -120,21 +120,36 @@ const BusinessDetails = () => {
                 <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')] bg-cover bg-center"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-light-bg dark:from-brand-dark to-transparent"></div>
                 
-                <div className="max-w-7xl mx-auto px-6 h-full flex flex-col justify-end pb-12 relative z-10">
-                    <button 
-                        onClick={() => navigate(-1)}
-                        className="absolute top-24 lg:top-12 left-6 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-brand-yellow hover:text-brand-black transition-all"
-                    >
-                        <ArrowLeft size={24} />
-                    </button>
+                <div className="max-w-7xl mx-auto px-6 pt-12">
+                <div className="flex flex-col space-y-12">
+                    {/* Featured Image Header */}
+                    {business.image_url && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full h-[30rem] rounded-[3.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-brand-dark-card"
+                        >
+                            <img 
+                                src={business.image_url} 
+                                alt={business.name} 
+                                className="w-full h-full object-cover"
+                            />
+                        </motion.div>
+                    )}
                     
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-4"
                     >
+                        <button 
+                            onClick={() => navigate(-1)}
+                            className="absolute top-24 lg:top-12 left-6 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-brand-yellow hover:text-brand-black transition-all"
+                        >
+                            <ArrowLeft size={24} />
+                        </button>
                         <div className="flex items-center space-x-3">
-                            <Badge variant="brand">Verified Node</Badge>
+                            <Badge variant="brand">Verified Location</Badge>
                             <div className="flex items-center text-brand-yellow">
                                 <Star size={16} className="fill-brand-yellow mr-1" />
                                 <span className="text-sm font-black">4.9 (2k+ reviews)</span>
@@ -148,6 +163,7 @@ const BusinessDetails = () => {
                     </motion.div>
                 </div>
             </div>
+        </div>
 
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
                 {/* Main Content: Slot Grid */}
@@ -155,8 +171,8 @@ const BusinessDetails = () => {
                     <div className="bg-white dark:bg-brand-dark-card rounded-[3rem] p-10 shadow-premium border border-slate-50 dark:border-brand-dark-card">
                         <div className="flex items-center justify-between mb-10">
                             <div>
-                                <h3 className="text-3xl font-black text-brand-black dark:text-white tracking-tight uppercase">Inventory Matrix</h3>
-                                <p className="text-slate-400 text-sm font-bold mt-2">Select a validated parking node</p>
+                                <h3 className="text-3xl font-black text-brand-black dark:text-white tracking-tight uppercase">Select Your Slot</h3>
+                                <p className="text-slate-400 text-sm font-bold mt-2">Choose an available parking space</p>
                             </div>
                             <div className="flex space-x-4">
                                 <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -165,7 +181,7 @@ const BusinessDetails = () => {
                                 </div>
                                 <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     <div className="w-3 h-3 rounded-full bg-slate-900 dark:bg-slate-700 mr-2"></div>
-                                    Active
+                                    Occupied
                                 </div>
                             </div>
                         </div>
@@ -204,15 +220,15 @@ const BusinessDetails = () => {
                              <div className="w-12 h-12 bg-slate-50 dark:bg-brand-dark rounded-xl flex items-center justify-center mb-6">
                                 <Clock className="text-brand-yellow" size={24} />
                              </div>
-                             <h4 className="text-lg font-black text-brand-black dark:text-white uppercase mb-2">Operation Window</h4>
-                             <p className="text-sm text-slate-500 font-bold leading-relaxed">System is running 24/7. Automated deployment across all clusters.</p>
+                             <h4 className="text-lg font-black text-brand-black dark:text-white uppercase mb-2">Business Hours</h4>
+                             <p className="text-sm text-slate-500 font-bold leading-relaxed">This location operates 24/7. Slots are available for booking at any time.</p>
                          </div>
                          <div className="bg-white dark:bg-brand-dark-card p-8 rounded-[2.5rem] border border-slate-50 dark:border-brand-dark-card shadow-sm">
                              <div className="w-12 h-12 bg-slate-50 dark:bg-brand-dark rounded-xl flex items-center justify-center mb-6 text-brand-yellow">
                                 <ShieldCheck size={24} />
                              </div>
-                             <h4 className="text-lg font-black text-brand-black dark:text-white uppercase mb-2">End-to-End Secure</h4>
-                             <p className="text-sm text-slate-500 font-bold leading-relaxed">Blockchain verified transactions and real-time monitoring active.</p>
+                             <h4 className="text-lg font-black text-brand-black dark:text-white uppercase mb-2">Secure Booking</h4>
+                             <p className="text-sm text-slate-500 font-bold leading-relaxed">Payments are processed securely and monitored in real-time.</p>
                          </div>
                     </div>
                 </div>
@@ -225,13 +241,13 @@ const BusinessDetails = () => {
                                  <Car size={200} />
                             </div>
                             
-                            <h3 className="text-2xl font-black tracking-tighter mb-8 uppercase">Session Config <br /> <span className="text-brand-yellow">Optimized</span></h3>
+                            <h3 className="text-2xl font-black tracking-tighter mb-8 uppercase">Booking <br /> <span className="text-brand-yellow">Summary</span></h3>
                             
                             <div className="space-y-6 mb-10 relative z-10">
                                 {/* ADDED CONFIGURATION BLOCK */}
                                 <div className="space-y-4 pb-6 border-b border-white/10">
                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Arrival Target</label>
+                                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Arrival Time</label>
                                         <input 
                                             type="datetime-local" 
                                             value={arrivalTime}
@@ -240,7 +256,7 @@ const BusinessDetails = () => {
                                         />
                                      </div>
                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Time Duration</label>
+                                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Stay Duration</label>
                                         <select 
                                             value={duration}
                                             onChange={(e) => setDuration(parseInt(e.target.value))}
@@ -266,11 +282,11 @@ const BusinessDetails = () => {
                                     <span className="text-2xl font-black font-outfit">${business.price_per_hour}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-4 border-b border-white/10">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Selected Node</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Selected Slot</span>
                                     <span className="text-2xl font-black font-outfit text-brand-yellow">{selectedSlot ? selectedSlot.slot_number : '---'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-4">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">System Total</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Price</span>
                                     <span className="text-4xl font-black font-outfit text-white">
                                         ${selectedSlot ? ((business.price_per_hour / 60) * duration).toFixed(2) : '0.00'}
                                     </span>
@@ -287,7 +303,7 @@ const BusinessDetails = () => {
                                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-brand-black cursor-progress"></div>
                                 ) : (
                                     <>
-                                        Execute Booking
+                                        Confirm Booking
                                         <CheckCircle2 size={18} className="ml-3" />
                                     </>
                                 )}
@@ -295,9 +311,11 @@ const BusinessDetails = () => {
                         </div>
                         
                         <div className="bg-slate-50 dark:bg-brand-dark-card/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 flex items-start space-x-4">
-                             <Info className="text-brand-yellow flex-shrink-0" size={20} />
+                             <div className="p-2 bg-brand-yellow/10 rounded-lg">
+                                 <Info className="text-brand-yellow flex-shrink-0" size={16} />
+                             </div>
                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                                 Booking is final. Cancellation metrics are subject to system policy and cluster availability.
+                                 Booking is final. Cancellation is subject to the location's policy and space availability.
                              </p>
                         </div>
                     </div>

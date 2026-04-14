@@ -49,22 +49,17 @@ const expireBookings = async () => {
             return;
         }
 
-        console.log(`[Scheduler] Found ${expiredBookings.length} expired booking(s). Freeing slots...`);
+        console.log(`[Scheduler] Found ${expiredBookings.length} overdue booking(s). Awaiting manual termination...`);
 
-        // Collect unique business IDs to notify
+        // Collect unique business IDs to notify (only if status changed to 'overdue')
         const affectedBusinessIds = new Set();
 
         for (const booking of expiredBookings) {
-            // Mark booking as completed
+            // Update status to 'overdue' instead of 'completed'
+            // This allows the UI to show a warning without freeing the slot
             await client.query(
-                "UPDATE bookings SET status = 'completed' WHERE id = $1",
+                "UPDATE bookings SET status = 'overdue' WHERE id = $1",
                 [booking.id]
-            );
-
-            // Free the slot
-            await client.query(
-                'UPDATE slots SET is_available = TRUE WHERE id = $1',
-                [booking.slot_id]
             );
 
             affectedBusinessIds.add(booking.business_id);
@@ -73,6 +68,7 @@ const expireBookings = async () => {
         await client.query('COMMIT');
 
         // Invalidate cache and emit WebSocket events for each affected business
+        // to show 'overdue' status in UI
         for (const businessId of affectedBusinessIds) {
             await invalidateSlotsCache(businessId);
             emitSlotsUpdated(businessId);

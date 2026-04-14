@@ -56,7 +56,7 @@ const getSlotsByBusiness = async (businessId) => {
         }
     }
 
-    const query = 'SELECT * FROM slots WHERE business_id = $1 ORDER BY slot_number';
+    const query = 'SELECT * FROM slots WHERE business_id = $1 ORDER BY LENGTH(slot_number), slot_number';
     const { rows } = await db.query(query, [businessId]);
 
     if (isRedisConnected()) {
@@ -83,8 +83,55 @@ const updateSlotAvailability = async (slotId, isAvailable) => {
     return rows[0];
 };
 
+const deleteSlot = async (slotId, ownerId) => {
+    // 1. Check ownership and slot existence
+    const checkQuery = `
+        SELECT s.*, b.owner_id 
+        FROM slots s
+        JOIN businesses b ON s.business_id = b.id
+        WHERE s.id = $1
+    `;
+    const { rows: slotRows } = await db.query(checkQuery, [slotId]);
+
+    if (slotRows.length === 0) {
+        throw new Error('Slot not found');
+    }
+
+    const slot = slotRows[0];
+    if (slot.owner_id !== ownerId) {
+        throw new Error('Unauthorized to delete this slot');
+    }
+
+    // 2. Check if slot is available (not occupied)
+    if (!slot.is_available) {
+        throw new Error('Cannot delete an occupied slot');
+    }
+
+    // 3. Check for active or overdue bookings (extra safety)
+    const bookingCheckQuery = `
+        SELECT id FROM bookings 
+        WHERE slot_id = $1 AND status IN ('booked', 'overdue')
+    `;
+    const { rows: bookingRows } = await db.query(bookingCheckQuery, [slotId]);
+    if (bookingRows.length > 0) {
+        throw new Error('Slot has an active booking and cannot be deleted');
+    }
+
+    // 4. Delete the slot
+    const deleteQuery = 'DELETE FROM slots WHERE id = $1 RETURNING business_id';
+    const { rows: deleteRows } = await db.query(deleteQuery, [slotId]);
+
+    if (deleteRows[0]) {
+        await invalidateSlotsCache(deleteRows[0].business_id);
+        emitSlotsUpdated(deleteRows[0].business_id);
+    }
+
+    return true;
+};
+
 module.exports = {
     createSlots,
     getSlotsByBusiness,
-    updateSlotAvailability
+    updateSlotAvailability,
+    deleteSlot
 };

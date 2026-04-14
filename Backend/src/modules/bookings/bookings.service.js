@@ -142,9 +142,85 @@ const getBookingsByBusiness = async (businessId) => {
     return rows;
 };
 
+const terminateBookingTransaction = async (bookingId, userId) => {
+    const client = await db.pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+
+        // 1. Find the booking
+        const bookingQuery = `
+            SELECT b.*, biz.price_per_hour 
+            FROM bookings b 
+            JOIN businesses biz ON b.business_id = biz.id 
+            WHERE b.id = $1 FOR UPDATE
+        `;
+        const { rows: bookingRows } = await client.query(bookingQuery, [bookingId]);
+        
+        if (bookingRows.length === 0) {
+            throw new Error('Booking not found');
+        }
+
+        const booking = bookingRows[0];
+        
+        if (booking.user_id !== userId) {
+            throw new Error('Unauthorized');
+        }
+
+        if (booking.status === 'completed' || booking.status === 'cancelled') {
+            throw new Error('Already terminated');
+        }
+
+        const now = new Date();
+        const endTime = new Date(booking.end_time);
+        
+        let penaltyAmount = 0;
+        if (now > endTime) {
+            // Calculate overstay in minutes
+            const diffMs = now - endTime;
+            const diffMins = Math.ceil(diffMs / (1000 * 60));
+            // Penalty: 1.5x the hourly rate for extra time
+            const penaltyHourlyRate = parseFloat(booking.price_per_hour) * 1.5;
+            penaltyAmount = (diffMins / 60) * penaltyHourlyRate;
+            // Round to 2 decimal places
+            penaltyAmount = Math.round(penaltyAmount * 100) / 100;
+        }
+
+        // 2. Update booking status
+        const updateBookingQuery = `
+            UPDATE bookings 
+            SET status = 'completed', 
+                actual_end_time = $1, 
+                penalty_amount = $2 
+            WHERE id = $3 
+            RETURNING *
+        `;
+        const { rows: updatedRows } = await client.query(updateBookingQuery, [now, penaltyAmount, bookingId]);
+        const updatedBooking = updatedRows[0];
+
+        // 3. Mark slot as available again
+        const updateSlotQuery = 'UPDATE slots SET is_available = TRUE WHERE id = $1';
+        await client.query(updateSlotQuery, [booking.slot_id]);
+
+        await client.query('COMMIT');
+        
+        // Socket and Cache updates
+        await invalidateSlotsCache(booking.business_id);
+        emitSlotsUpdated(booking.business_id);
+
+        return updatedBooking;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     createBookingTransaction,
     cancelBookingTransaction,
     getBookingsByUser,
-    getBookingsByBusiness
+    getBookingsByBusiness,
+    terminateBookingTransaction
 };

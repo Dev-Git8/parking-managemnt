@@ -13,6 +13,11 @@ router.post('/', authMiddleware, roleMiddleware(['customer']), bookingsControlle
 // @access  Private (Customer)
 router.get('/my', authMiddleware, roleMiddleware(['customer']), bookingsController.getMyBookings);
 
+// @route   PUT api/bookings/:id/terminate
+// @desc    Terminate a booking (Manual Checkout)
+// @access  Private (Customer)
+router.put('/:id/terminate', authMiddleware, roleMiddleware(['customer']), bookingsController.terminateBooking);
+
 // @route   PUT api/bookings/:id/cancel
 // @desc    Cancel a booking
 // @access  Private (Customer)

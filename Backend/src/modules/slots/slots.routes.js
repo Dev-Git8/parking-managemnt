@@ -13,4 +13,9 @@ router.post('/', authMiddleware, roleMiddleware(['business']), slotsController.a
 // @access  Public
 router.get('/:businessId', slotsController.listSlots);
 
+// @route   DELETE api/slots/:id
+// @desc    Delete a slot
+// @access  Private (Business Owner)
+router.delete('/:id', authMiddleware, roleMiddleware(['business']), slotsController.removeSlot);
+
 module.exports = router;

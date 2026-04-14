@@ -1,12 +1,12 @@
 const db = require('../../config/db');
 
-const createBusiness = async (ownerId, name, address, totalSlots, price) => {
+const createBusiness = async (ownerId, name, address, totalSlots, price, imageUrl = null) => {
     const query = `
-        INSERT INTO businesses (owner_id, name, address, total_slots, price_per_hour, status)
-        VALUES ($1, $2, $3, $4, $5, 'pending')
+        INSERT INTO businesses (owner_id, name, address, total_slots, price_per_hour, status, image_url)
+        VALUES ($1, $2, $3, $4, $5, 'pending', $6)
         RETURNING *
     `;
-    const values = [ownerId, name, address, totalSlots, price];
+    const values = [ownerId, name, address, totalSlots, price, imageUrl];
     const { rows } = await db.query(query, values);
     return rows[0];
 };
@@ -17,14 +17,21 @@ const getBusinessesByOwner = async (ownerId) => {
     return rows;
 };
 
-const getAllApprovedBusinesses = async (limit = 10, offset = 0) => {
-    const query = `
+const getAllApprovedBusinesses = async (limit = 10, offset = 0, searchTerm = '') => {
+    let query = `
         SELECT * FROM businesses 
         WHERE status = 'approved' 
-        ORDER BY created_at DESC 
-        LIMIT $1 OFFSET $2
     `;
-    const { rows } = await db.query(query, [limit, offset]);
+    const params = [limit, offset];
+
+    if (searchTerm) {
+        query += ` AND (name ILIKE $3 OR address ILIKE $3) `;
+        params.push(`%${searchTerm}%`);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $1 OFFSET $2 `;
+    
+    const { rows } = await db.query(query, params);
     return rows;
 };
 
@@ -40,14 +47,19 @@ const updateBusinessStatus = async (id, status) => {
     return rows[0];
 };
 
-const updateBusinessDetails = async (id, name, address, price) => {
+const updateBusinessDetails = async (id, { name, address, totalSlots, price, imageUrl }) => {
     const query = `
         UPDATE businesses 
-        SET name = $1, address = $2, price_per_hour = $3 
-        WHERE id = $4 
+        SET name = COALESCE($1, name), 
+            address = COALESCE($2, address), 
+            total_slots = COALESCE($3, total_slots), 
+            price_per_hour = COALESCE($4, price_per_hour),
+            image_url = COALESCE($5, image_url)
+        WHERE id = $6 
         RETURNING *
     `;
-    const { rows } = await db.query(query, [name, address, price, id]);
+    const values = [name, address, totalSlots, price, imageUrl, id];
+    const { rows } = await db.query(query, values);
     return rows[0];
 };
 

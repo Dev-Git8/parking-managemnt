@@ -5,7 +5,7 @@ let isConnected = false;
 const redisClient = createClient({
     url: process.env.REDIS_URL || 'redis://localhost:6379',
     socket: {
-        reconnectStrategy: false // Prevents infinite connection spam if Redis is uninstalled
+        reconnectStrategy: (retries) => Math.min(retries * 50, 5000)
     }
 });
 

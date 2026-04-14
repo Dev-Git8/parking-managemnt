@@ -13,6 +13,7 @@ import BookingSuccess from './pages/BookingSuccess/BookingSuccess';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import BusinessDashboard from './pages/Dashboard/BusinessDashboard';
 import About from './pages/About/About';
+import CheckoutSummary from './pages/CheckoutSummary';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles }) => {
@@ -49,6 +50,11 @@ function AppContent() {
                 <Route path="/profile" element={
                     <ProtectedRoute roles={['customer']}>
                         <Profile />
+                    </ProtectedRoute>
+                } />
+                <Route path="/checkout-summary" element={
+                    <ProtectedRoute roles={['customer']}>
+                        <CheckoutSummary />
                     </ProtectedRoute>
                 } />
 

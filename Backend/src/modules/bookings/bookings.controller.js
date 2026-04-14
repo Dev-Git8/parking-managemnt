@@ -75,9 +75,30 @@ const getBusinessBookings = async (req, res, next) => {
     }
 };
 
+const terminateBooking = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const booking = await bookingsService.terminateBookingTransaction(id, userId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Booking terminated successfully',
+            data: booking
+        });
+    } catch (error) {
+        if (error.message === 'Booking not found' || error.message === 'Unauthorized' || error.message === 'Already terminated') {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
 module.exports = {
     createBooking,
     cancelBooking,
     getMyBookings,
-    getBusinessBookings
+    getBusinessBookings,
+    terminateBooking
 };
