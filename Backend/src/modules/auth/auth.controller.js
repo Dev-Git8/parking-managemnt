@@ -40,7 +40,12 @@ const login = async (req, res, next) => {
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
 
-        await authService.updateRefreshToken(user.id, refreshToken);
+        await authService.createSession(
+            user.id, 
+            refreshToken, 
+            req.headers['user-agent'], 
+            req.ip
+        );
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
@@ -72,12 +77,12 @@ const refresh = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Refresh token missing' });
         }
 
-        const decoded = verifyRefreshToken(refreshToken);
-        const user = await authService.findUserById(decoded.id);
-
-        if (!user) {
-            return res.status(401).json({ success: false, message: 'User not found' });
+        const session = await authService.validateSession(refreshToken);
+        if (!session) {
+            return res.status(401).json({ success: false, message: 'Invalid or expired session' });
         }
+
+        const user = session.user;
 
         const newAccessToken = generateAccessToken(user);
 
@@ -101,8 +106,7 @@ const logout = async (req, res, next) => {
     try {
         const refreshToken = req.cookies.refreshToken;
         if (refreshToken) {
-            const decoded = verifyRefreshToken(refreshToken);
-            await authService.clearRefreshToken(decoded.id);
+            await authService.deleteSession(refreshToken);
         }
 
         res.clearCookie('refreshToken');

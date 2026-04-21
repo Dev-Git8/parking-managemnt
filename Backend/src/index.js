@@ -8,6 +8,7 @@ const { errorMiddleware } = require('./middlewares/error.middleware');
 const http = require('http');
 const { initializeSocket } = require('./config/socket');
 const { connectRedis } = require('./config/redis');
+const { connectDB } = require('./config/prisma');
 const { startBookingScheduler } = require('./services/bookingScheduler');
 
 const app = express();
@@ -16,6 +17,9 @@ const PORT = process.env.PORT || 5000;
 
 // Initialize WebSockets
 initializeSocket(server);
+
+// Connect to Database
+connectDB();
 
 // Connect to Redis
 connectRedis();

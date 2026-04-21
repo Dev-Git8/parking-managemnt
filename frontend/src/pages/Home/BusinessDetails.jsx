@@ -30,7 +30,7 @@ const BusinessDetails = () => {
             // Re-validate selected slot (clear if it became unavailable)
             setSelectedSlot(prev => {
                 const refreshed = slotsRes.data.data.find(s => s.id === prev?.id);
-                return refreshed?.is_available ? refreshed : null;
+                return refreshed?.isAvailable ? refreshed : null;
             });
         } catch (error) {
             console.error('Error fetching slots', error);
@@ -90,7 +90,7 @@ const BusinessDetails = () => {
             endStr.setMinutes(endStr.getMinutes() + parseInt(duration));
             const endTime = endStr.toISOString();
             
-            const totalPrice = (business.price_per_hour / 60) * parseInt(duration);
+            const totalPrice = (business.pricePerHour / 60) * parseInt(duration);
 
             await api.post('/bookings', {
                 businessId: business.id,
@@ -123,14 +123,14 @@ const BusinessDetails = () => {
                 <div className="max-w-7xl mx-auto px-6 pt-12">
                 <div className="flex flex-col space-y-12">
                     {/* Featured Image Header */}
-                    {business.image_url && (
+                    {business.imageUrl && (
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             className="w-full h-[30rem] rounded-[3.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-brand-dark-card"
                         >
                             <img 
-                                src={business.image_url} 
+                                src={business.imageUrl} 
                                 alt={business.name} 
                                 className="w-full h-full object-cover"
                             />
@@ -190,11 +190,11 @@ const BusinessDetails = () => {
                             {slots.map((slot) => (
                                 <button
                                     key={slot.id}
-                                    disabled={!slot.is_available}
+                                    disabled={!slot.isAvailable}
                                     onClick={() => setSelectedSlot(slot)}
                                     className={`
                                         aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-300 group relative overflow-hidden
-                                        ${slot.is_available 
+                                        ${slot.isAvailable 
                                             ? selectedSlot?.id === slot.id 
                                                 ? 'bg-brand-yellow text-brand-black scale-105 shadow-yellow ring-4 ring-brand-yellow/20' 
                                                 : 'bg-slate-50 dark:bg-brand-dark text-slate-400 hover:bg-brand-yellow/10 hover:text-brand-yellow border-2 border-slate-100 dark:border-white/5'
@@ -203,8 +203,8 @@ const BusinessDetails = () => {
                                     `}
                                 >
                                     <Car size={24} className={`mb-2 ${selectedSlot?.id === slot.id ? 'animate-bounce' : 'opacity-20'}`} />
-                                    <span className="text-sm font-black font-outfit uppercase">{slot.slot_number}</span>
-                                    {!slot.is_available && (
+                                    <span className="text-sm font-black font-outfit uppercase">{slot.slotNumber}</span>
+                                    {!slot.isAvailable && (
                                          <div className="absolute top-1 right-1">
                                              <XCircle size={12} />
                                          </div>
@@ -279,16 +279,16 @@ const BusinessDetails = () => {
 
                                 <div className="flex justify-between items-center py-4 border-b border-white/10">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Hourly Rate</span>
-                                    <span className="text-2xl font-black font-outfit">${business.price_per_hour}</span>
+                                    <span className="text-2xl font-black font-outfit">${business.pricePerHour}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-4 border-b border-white/10">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Selected Slot</span>
-                                    <span className="text-2xl font-black font-outfit text-brand-yellow">{selectedSlot ? selectedSlot.slot_number : '---'}</span>
+                                    <span className="text-2xl font-black font-outfit text-brand-yellow">{selectedSlot ? selectedSlot.slotNumber : '---'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-4">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Price</span>
                                     <span className="text-4xl font-black font-outfit text-white">
-                                        ${selectedSlot ? ((business.price_per_hour / 60) * duration).toFixed(2) : '0.00'}
+                                        ${selectedSlot ? ((business.pricePerHour / 60) * duration).toFixed(2) : '0.00'}
                                     </span>
                                 </div>
                             </div>

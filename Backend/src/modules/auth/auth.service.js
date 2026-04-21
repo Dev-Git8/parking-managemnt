@@ -1,44 +1,111 @@
-const db = require('../../config/db');
+const prisma = require('../../config/prisma');
 const bcrypt = require('bcrypt');
 
 const createUser = async (name, email, password, role) => {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const query = `
-        INSERT INTO users (name, email, password, role)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, name, email, role, created_at
-    `;
-    const values = [name, email, hashedPassword, role];
-    const { rows } = await db.query(query, values);
-    return rows[0];
+    return await prisma.user.create({
+        data: {
+            name,
+            email,
+            password: hashedPassword,
+            role,
+        },
+    });
 };
 
 const findUserByEmail = async (email) => {
-    const query = 'SELECT * FROM users WHERE email = $1';
-    const { rows } = await db.query(query, [email]);
-    return rows[0];
+    return await prisma.user.findUnique({
+        where: { email },
+    });
 };
 
 const findUserById = async (id) => {
-    const query = 'SELECT id, name, email, role FROM users WHERE id = $1';
-    const { rows } = await db.query(query, [id]);
-    return rows[0];
+    return await prisma.user.findUnique({
+        where: { id: parseInt(id) },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+        },
+    });
 };
 
-const updateRefreshToken = async (userId, token) => {
-    const query = 'UPDATE users SET refresh_token = $1 WHERE id = $2';
-    await db.query(query, [token, userId]);
+const createSession = async (userId, token, userAgent, ipAddress) => {
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    return await prisma.$transaction(async (tx) => {
+        // Enforce max 5 devices limit
+        const sessionCount = await tx.session.count({
+            where: { userId: parseInt(userId) }
+        });
+
+        if (sessionCount >= 5) {
+            const oldestSession = await tx.session.findFirst({
+                where: { userId: parseInt(userId) },
+                orderBy: { createdAt: 'asc' }
+            });
+            
+            if (oldestSession) {
+                await tx.session.delete({
+                    where: { id: oldestSession.id }
+                });
+            }
+        }
+
+        // Create new session
+        return await tx.session.create({
+            data: {
+                userId: parseInt(userId),
+                token,
+                userAgent,
+                ipAddress,
+                expiresAt: sevenDaysFromNow
+            }
+        });
+    });
 };
 
-const clearRefreshToken = async (userId) => {
-    const query = 'UPDATE users SET refresh_token = NULL WHERE id = $1';
-    await db.query(query, [userId]);
+const validateSession = async (token) => {
+    const session = await prisma.session.findUnique({
+        where: { token },
+        include: { user: true }
+    });
+
+    if (!session) return null;
+
+    // Check expiration
+    if (new Date() > session.expiresAt) {
+        await prisma.session.delete({ where: { id: session.id } });
+        return null;
+    }
+
+    return session;
+};
+
+const deleteSession = async (token) => {
+    try {
+        await prisma.session.delete({
+            where: { token }
+        });
+    } catch (error) {
+        // Ignore if already deleted
+    }
+};
+
+const clearAllUserSessions = async (userId) => {
+    await prisma.session.deleteMany({
+        where: { userId: parseInt(userId) }
+    });
 };
 
 module.exports = {
     createUser,
     findUserByEmail,
     findUserById,
-    updateRefreshToken,
-    clearRefreshToken,
+    createSession,
+    validateSession,
+    deleteSession,
+    clearAllUserSessions,
 };

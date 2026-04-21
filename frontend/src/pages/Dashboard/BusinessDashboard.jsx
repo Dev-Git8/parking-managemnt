@@ -60,7 +60,7 @@ const BusinessDashboard = () => {
             setStats({
                 totalSlots: fetchedSlots.length,
                 activeBookings: fetchedBookings.filter(b => b.status === 'booked' || b.status === 'active').length,
-                totalRevenue: fetchedBookings.reduce((acc, curr) => acc + (parseFloat(curr.total_price) || 0), 0)
+                totalRevenue: fetchedBookings.reduce((acc, curr) => acc + (parseFloat(curr.totalPrice) || 0), 0)
             });
         } catch (error) {
             console.error('Error fetching slots and bookings', error);
@@ -166,7 +166,7 @@ const BusinessDashboard = () => {
         setEditForm({
             name: business.name,
             address: business.address,
-            price: business.price_per_hour,
+            price: business.pricePerHour,
             image: null
         });
         setShowEditBusiness(true);
@@ -435,9 +435,9 @@ const BusinessDashboard = () => {
                                                         className="w-full h-full object-cover" 
                                                         alt="Preview" 
                                                     />
-                                                ) : business?.image_url ? (
+                                                ) : business?.imageUrl ? (
                                                     <img 
-                                                        src={business.image_url} 
+                                                        src={business.imageUrl} 
                                                         className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
                                                         alt="Current" 
                                                     />
@@ -590,7 +590,7 @@ const BusinessDashboard = () => {
                                                     <div className="w-10 h-10 bg-slate-100 dark:bg-brand-dark rounded-xl flex items-center justify-center group-hover:bg-brand-yellow transition-colors">
                                                         <Car size={18} className="text-slate-400 dark:text-slate-600 group-hover:text-brand-black" />
                                                     </div>
-                                                    <span className="text-sm font-black text-brand-black dark:text-white uppercase tracking-widest">#{slot.slot_number}</span>
+                                                    <span className="text-sm font-black text-brand-black dark:text-white uppercase tracking-widest">#{slot.slotNumber}</span>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
@@ -598,18 +598,18 @@ const BusinessDashboard = () => {
                                             </td>
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center space-x-2">
-                                                    <div className={`w-2 h-2 rounded-full ${slot.is_available ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${slot.is_available ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                        {slot.is_available ? 'Available' : 'Occupied'}
+                                                    <div className={`w-2 h-2 rounded-full ${slot.isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${slot.isAvailable ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                        {slot.isAvailable ? 'Available' : 'Occupied'}
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6">
+                                             <td className="px-8 py-6">
                                                 {(() => {
-                                                    const active = bookings.find(b => b.slot_id === slot.id && (b.status === 'booked' || b.status === 'overdue'));
+                                                    const active = bookings.find(b => b.slotId === slot.id && (b.status === 'booked' || b.status === 'overdue'));
                                                     if (!active) return <span className="text-xs font-bold text-slate-500 dark:text-slate-400">---</span>;
-                                                    const sTime = new Date(active.start_time);
-                                                    const eTime = new Date(active.end_time);
+                                                    const sTime = new Date(active.startTime);
+                                                    const eTime = new Date(active.endTime);
                                                     const durationMs = eTime - sTime;
                                                     const durationMins = Math.round(durationMs / 60000);
                                                     const durationLabel = durationMins >= 60 
@@ -629,9 +629,9 @@ const BusinessDashboard = () => {
                                                 <div className="flex items-center justify-end space-x-2">
                                                     <button 
                                                         onClick={() => handleDeleteSlot(slot.id)}
-                                                        disabled={!slot.is_available}
-                                                        className={`p-2 transition-colors ${slot.is_available ? 'text-slate-300 hover:text-red-500' : 'text-slate-100 dark:text-slate-800 cursor-not-allowed'}`}
-                                                        title={slot.is_available ? 'Delete Slot' : 'Cannot delete occupied slot'}
+                                                        disabled={!slot.isAvailable}
+                                                        className={`p-2 transition-colors ${slot.isAvailable ? 'text-slate-300 hover:text-red-500' : 'text-slate-100 dark:text-slate-800 cursor-not-allowed'}`}
+                                                        title={slot.isAvailable ? 'Delete Slot' : 'Cannot delete occupied slot'}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>

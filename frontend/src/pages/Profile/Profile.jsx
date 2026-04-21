@@ -116,16 +116,16 @@ const Profile = () => {
                                                     {getStatusBadge(booking.status)}
                                                     <span className="text-[10px] font-black font-outfit text-slate-300 uppercase tracking-widest">Booking ID: {booking.id}</span>
                                                 </div>
-                                                <h4 className="text-xl font-black text-brand-black dark:text-white uppercase">{booking.business_name}</h4>
+                                                <h4 className="text-xl font-black text-brand-black dark:text-white uppercase">{booking.business?.name || 'Unknown Location'}</h4>
                                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-tight">
-                                                    Parking Slot {booking.slot_number} | {new Date(booking.start_time).toLocaleString()}
+                                                    Parking Slot {booking.slot?.slotNumber || '---'} | {new Date(booking.startTime).toLocaleString()}
                                                 </div>
                                             </div>
 
                                             <div className="flex flex-row md:flex-col items-center md:items-end gap-4">
                                                 <div className="text-right">
-                                                     <p className="text-2xl font-black text-brand-black dark:text-white font-outfit">${booking.total_price}</p>
-                                                     {booking.penalty_amount > 0 && <p className="text-[10px] text-red-500 font-black">+ ${booking.penalty_amount} penalty</p>}
+                                                     <p className="text-2xl font-black text-brand-black dark:text-white font-outfit">${booking.totalPrice}</p>
+                                                     {booking.penaltyAmount > 0 && <p className="text-[10px] text-red-500 font-black">+ ${booking.penaltyAmount} penalty</p>}
                                                 </div>
                                                 
                                                 {(booking.status === 'booked' || booking.status === 'overdue') && (

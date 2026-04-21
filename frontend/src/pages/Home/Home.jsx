@@ -168,9 +168,9 @@ const Home = () => {
                                     className="group bg-white dark:bg-[#0f0f0f] p-4 rounded-[2.5rem] border border-slate-50 dark:border-[#1a1a1a] shadow-premium hover:shadow-premium-hover transition-all duration-500 hover:-translate-y-2"
                                 >
                                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden mb-6 bg-slate-100 dark:bg-[#1a1a1a]">
-                                        {biz.image_url ? (
+                                        {biz.imageUrl ? (
                                             <img 
-                                                src={biz.image_url} 
+                                                src={biz.imageUrl} 
                                                 alt={biz.name}
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             />
@@ -197,7 +197,7 @@ const Home = () => {
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-[#1a1a1a]">
                                             <div>
                                                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">Fee</p>
-                                                <p className="text-2xl font-black text-brand-black dark:text-white font-outfit">${biz.price_per_hour}<span className="text-xs text-slate-400 uppercase ml-1">/hr</span></p>
+                                                <p className="text-2xl font-black text-brand-black dark:text-white font-outfit">${biz.pricePerHour}<span className="text-xs text-slate-400 uppercase ml-1">/hr</span></p>
                                             </div>
                                             <Link to={`/business/${biz.id}`}>
                                                 <Button size="md" className="group/btn shadow-yellow">

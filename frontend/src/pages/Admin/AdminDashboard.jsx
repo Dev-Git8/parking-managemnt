@@ -199,9 +199,9 @@ const AdminDashboard = () => {
                                             </td>
                                             <td className="px-10 py-8">
                                                 <div className="text-lg font-black text-brand-black dark:text-white font-outfit">
-                                                    ${biz.price_per_hour} <span className="text-[10px] text-slate-400 uppercase ml-1">per hour</span>
+                                                    ${biz.pricePerHour} <span className="text-[10px] text-slate-400 uppercase ml-1">per hour</span>
                                                 </div>
-                                                <div className="text-slate-500 dark:text-slate-500 text-[10px] font-bold mt-1 uppercase tracking-widest">OWNER: {biz.owner_name}</div>
+                                                <div className="text-slate-500 dark:text-slate-500 text-[10px] font-bold mt-1 uppercase tracking-widest">OWNER: {biz.owner?.name || 'Unknown'}</div>
                                             </td>
                                             <td className="px-10 py-8 text-center">
                                                 <Badge variant={
@@ -264,7 +264,7 @@ const AdminDashboard = () => {
                                                 </Badge>
                                             </td>
                                             <td className="px-10 py-8 text-slate-400 dark:text-slate-500 text-xs font-bold font-outfit text-right">
-                                                Joined: {new Date(u.created_at).toLocaleDateString()}
+                                                Joined: {new Date(u.createdAt).toLocaleDateString()}
                                             </td>
                                         </tr>
                                     ))}

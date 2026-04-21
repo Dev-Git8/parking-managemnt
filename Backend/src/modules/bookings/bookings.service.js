@@ -1,4 +1,4 @@
-const db = require('../../config/db');
+const prisma = require('../../config/prisma');
 const { redisClient, isRedisConnected } = require('../../config/redis');
 const { getIO } = require('../../config/socket');
 
@@ -21,62 +21,62 @@ const invalidateSlotsCache = async (businessId) => {
 };
 
 const createBookingTransaction = async (userId, businessId, slotId, startTime, endTime, totalPrice) => {
-    const client = await db.pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-
-        // 1. Lock the slot row and check availability
-        const slotQuery = 'SELECT * FROM slots WHERE id = $1 FOR UPDATE';
-        const { rows: slotRows } = await client.query(slotQuery, [slotId]);
+    return await prisma.$transaction(async (tx) => {
+        // 1. Lock the slot row and check availability using raw SQL for FOR UPDATE
+        const slotRows = await tx.$queryRaw`
+            SELECT id, business_id as "businessId", slot_number as "slotNumber", is_available as "isAvailable" 
+            FROM slots 
+            WHERE id = ${parseInt(slotId)} 
+            FOR UPDATE
+        `;
         
         if (slotRows.length === 0) {
             throw new Error('Slot not found');
         }
 
         const slot = slotRows[0];
-        if (!slot.is_available) {
+        if (!slot.isAvailable) {
             throw new Error('Slot is already booked');
         }
 
         // 2. Create the booking
-        const bookingQuery = `
-            INSERT INTO bookings (user_id, business_id, slot_id, start_time, end_time, total_price, status)
-            VALUES ($1, $2, $3, $4, $5, $6, 'booked')
-            RETURNING *
-        `;
-        const bookingValues = [userId, businessId, slotId, startTime, endTime, totalPrice];
-        const { rows: bookingRows } = await client.query(bookingQuery, bookingValues);
-        const booking = bookingRows[0];
+        const booking = await tx.booking.create({
+            data: {
+                userId: parseInt(userId),
+                businessId: parseInt(businessId),
+                slotId: parseInt(slotId),
+                startTime: new Date(startTime),
+                endTime: new Date(endTime),
+                totalPrice: parseFloat(totalPrice),
+                status: 'booked',
+            },
+        });
 
         // 3. Mark slot as unavailable
-        const updateSlotQuery = 'UPDATE slots SET is_available = FALSE WHERE id = $1';
-        await client.query(updateSlotQuery, [slotId]);
+        await tx.slot.update({
+            where: { id: parseInt(slotId) },
+            data: { isAvailable: false },
+        });
 
-        await client.query('COMMIT');
-
-        // Socket and Cache updates
+        // Socket and Cache updates (after transaction success)
+        // Note: These happen after the transaction block returns
+        return booking;
+    }).then(async (booking) => {
         await invalidateSlotsCache(businessId);
         emitSlotsUpdated(businessId);
-
         return booking;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 };
 
 const cancelBookingTransaction = async (bookingId, userId) => {
-    const client = await db.pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-
-        // 1. Find the booking
-        const bookingQuery = 'SELECT * FROM bookings WHERE id = $1 FOR UPDATE';
-        const { rows: bookingRows } = await client.query(bookingQuery, [bookingId]);
+    return await prisma.$transaction(async (tx) => {
+        // 1. Find the booking with a lock
+        const bookingRows = await tx.$queryRaw`
+            SELECT id, user_id as "userId", business_id as "businessId", slot_id as "slotId", status 
+            FROM bookings 
+            WHERE id = ${parseInt(bookingId)} 
+            FOR UPDATE
+        `;
         
         if (bookingRows.length === 0) {
             throw new Error('Booking not found');
@@ -84,8 +84,7 @@ const cancelBookingTransaction = async (bookingId, userId) => {
 
         const booking = bookingRows[0];
         
-        // Ensure user is the owner or an admin (admin check can be added later)
-        if (booking.user_id !== userId) {
+        if (booking.userId !== parseInt(userId)) {
             throw new Error('Unauthorized to cancel this booking');
         }
 
@@ -94,76 +93,60 @@ const cancelBookingTransaction = async (bookingId, userId) => {
         }
 
         // 2. Update booking status
-        const updateBookingQuery = "UPDATE bookings SET status = 'cancelled' WHERE id = $1 RETURNING *";
-        await client.query(updateBookingQuery, [bookingId]);
+        const updatedBooking = await tx.booking.update({
+            where: { id: parseInt(bookingId) },
+            data: { status: 'cancelled' },
+        });
 
         // 3. Mark slot as available again
-        const updateSlotQuery = 'UPDATE slots SET is_available = TRUE WHERE id = $1';
-        await client.query(updateSlotQuery, [booking.slot_id]);
+        await tx.slot.update({
+            where: { id: booking.slotId },
+            data: { isAvailable: true },
+        });
 
-        await client.query('COMMIT');
-        
-        // Socket and Cache updates
-        await invalidateSlotsCache(booking.business_id);
-        emitSlotsUpdated(booking.business_id);
-
+        return updatedBooking;
+    }).then(async (booking) => {
+        await invalidateSlotsCache(booking.businessId);
+        emitSlotsUpdated(booking.businessId);
         return booking;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 };
 
 const getBookingsByUser = async (userId) => {
-    const query = `
-        SELECT b.*, s.slot_number, biz.name as business_name, biz.address as business_address
-        FROM bookings b
-        JOIN slots s ON b.slot_id = s.id
-        JOIN businesses biz ON b.business_id = biz.id
-        WHERE b.user_id = $1
-        ORDER BY b.created_at DESC
-    `;
-    const { rows } = await db.query(query, [userId]);
-    return rows;
+    return await prisma.booking.findMany({
+        where: { userId: parseInt(userId) },
+        include: {
+            slot: { select: { slotNumber: true } },
+            business: { select: { name: true, address: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
 };
 
 const getBookingsByBusiness = async (businessId) => {
-    const query = `
-        SELECT b.*, s.slot_number, u.name as user_name, u.email as user_email
-        FROM bookings b
-        JOIN slots s ON b.slot_id = s.id
-        JOIN users u ON b.user_id = u.id
-        WHERE b.business_id = $1
-        ORDER BY b.created_at DESC
-    `;
-    const { rows } = await db.query(query, [businessId]);
-    return rows;
+    return await prisma.booking.findMany({
+        where: { businessId: parseInt(businessId) },
+        include: {
+            slot: { select: { slotNumber: true } },
+            user: { select: { name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
 };
 
 const terminateBookingTransaction = async (bookingId, userId) => {
-    const client = await db.pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-
-        // 1. Find the booking
-        const bookingQuery = `
-            SELECT b.*, biz.price_per_hour 
-            FROM bookings b 
-            JOIN businesses biz ON b.business_id = biz.id 
-            WHERE b.id = $1 FOR UPDATE
-        `;
-        const { rows: bookingRows } = await client.query(bookingQuery, [bookingId]);
+    return await prisma.$transaction(async (tx) => {
+        // 1. Find the booking with its business details
+        const booking = await tx.booking.findUnique({
+            where: { id: parseInt(bookingId) },
+            include: { business: true }
+        });
         
-        if (bookingRows.length === 0) {
+        if (!booking) {
             throw new Error('Booking not found');
         }
 
-        const booking = bookingRows[0];
-        
-        if (booking.user_id !== userId) {
+        if (booking.userId !== parseInt(userId)) {
             throw new Error('Unauthorized');
         }
 
@@ -172,49 +155,39 @@ const terminateBookingTransaction = async (bookingId, userId) => {
         }
 
         const now = new Date();
-        const endTime = new Date(booking.end_time);
+        const endTime = new Date(booking.endTime);
         
         let penaltyAmount = 0;
         if (now > endTime) {
-            // Calculate overstay in minutes
             const diffMs = now - endTime;
             const diffMins = Math.ceil(diffMs / (1000 * 60));
-            // Penalty: 1.5x the hourly rate for extra time
-            const penaltyHourlyRate = parseFloat(booking.price_per_hour) * 1.5;
+            const penaltyHourlyRate = parseFloat(booking.business.pricePerHour) * 1.5;
             penaltyAmount = (diffMins / 60) * penaltyHourlyRate;
-            // Round to 2 decimal places
             penaltyAmount = Math.round(penaltyAmount * 100) / 100;
         }
 
         // 2. Update booking status
-        const updateBookingQuery = `
-            UPDATE bookings 
-            SET status = 'completed', 
-                actual_end_time = $1, 
-                penalty_amount = $2 
-            WHERE id = $3 
-            RETURNING *
-        `;
-        const { rows: updatedRows } = await client.query(updateBookingQuery, [now, penaltyAmount, bookingId]);
-        const updatedBooking = updatedRows[0];
+        const updatedBooking = await tx.booking.update({
+            where: { id: parseInt(bookingId) },
+            data: {
+                status: 'completed',
+                actualEndTime: now,
+                penaltyAmount: penaltyAmount,
+            },
+        });
 
         // 3. Mark slot as available again
-        const updateSlotQuery = 'UPDATE slots SET is_available = TRUE WHERE id = $1';
-        await client.query(updateSlotQuery, [booking.slot_id]);
-
-        await client.query('COMMIT');
-        
-        // Socket and Cache updates
-        await invalidateSlotsCache(booking.business_id);
-        emitSlotsUpdated(booking.business_id);
+        await tx.slot.update({
+            where: { id: booking.slotId },
+            data: { isAvailable: true },
+        });
 
         return updatedBooking;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    }).then(async (booking) => {
+        await invalidateSlotsCache(booking.businessId);
+        emitSlotsUpdated(booking.businessId);
+        return booking;
+    });
 };
 
 module.exports = {

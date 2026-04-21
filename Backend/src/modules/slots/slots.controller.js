@@ -11,7 +11,7 @@ const addSlots = async (req, res, next) => {
             return res.status(404).json({ success: false, message: 'Business not found' });
         }
 
-        if (business.owner_id !== ownerId) {
+        if (business.ownerId !== ownerId) {
             return res.status(403).json({ success: false, message: 'Unauthorized to add slots to this business' });
         }
 
